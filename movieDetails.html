@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>Movie Details</title>
+</head>
+<body>
+    <header>
+        <button id="backButton">Back to Search</button>
+    </header>
+    <main>
+        <div id="movieDetails"></div>
+        <h2>Similar Movies</h2>
+        <section id="similarMovies"></section> <!-- Similar movies container -->
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const apiKey = 'a1eaf99f91dafeb68a35eee97f7a433e';
+        const apiUrl = 'https://api.themoviedb.org/3';
+        const imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
+        const movieDetailsContainer = document.getElementById('movieDetails');
+        const similarMoviesContainer = document.getElementById('similarMovies');
+        const backButton = document.getElementById('backButton');
+
+        // Fetch movie details
+        async function getMovieDetails(movieId) {
+            try {
+                const response = await axios.get(`${apiUrl}/movie/${movieId}?api_key=${apiKey}&append_to_response=credits`);
+                return response.data;
+            } catch (error) {
+                console.error('Failed to fetch movie details:', error);
+                return null;
+            }
+        }
+
+        // Fetch similar movies
+        async function getSimilarMovies(movieId) {
+            try {
+                const response = await axios.get(`${apiUrl}/movie/${movieId}/similar?api_key=${apiKey}`);
+                return response.data.results;
+            } catch (error) {
+                console.error('Failed to fetch similar movies:', error);
+                return [];
+            }
+        }
+
+        // Display movie details
+        async function displayMovieDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const movieId = urlParams.get('id');
+            if (movieId) {
+                const movie = await getMovieDetails(movieId);
+                if (movie) {
+                    movieDetailsContainer.innerHTML = `
+                        <h1>${movie.title}</h1>
+                        <img src="${movie.poster_path ? imageBaseUrl + movie.poster_path : 'https://via.placeholder.com/500x750?text=No+Image+Available'}" alt="${movie.title}">
+                        <p>${movie.overview}</p>
+                        <p>Release Date: ${movie.release_date}</p>
+                        <p>Director: ${getDirector(movie.credits.crew)}</p>
+                        <p>Stars: ${getStars(movie.credits.cast)}</p>
+                        <p>Genre: ${getGenres(movie.genres)}</p>
+                        <p>Rating: ${movie.vote_average}/10</p>
+                    `;
+
+                    // Fetch and display similar movies
+                    const similarMovies = await getSimilarMovies(movieId);
+                    displaySimilarMovies(similarMovies);
+                } else {
+                    movieDetailsContainer.innerHTML = `<p>Movie details not found.</p>`;
+                }
+            }
+        }
+
+        // Display similar movies in a grid
+        function displaySimilarMovies(movies) {
+            similarMoviesContainer.innerHTML = movies.length ? '' : '<p>No similar movies found.</p>';
+
+            movies.forEach(movie => {
+                const movieElement = document.createElement('div');
+                movieElement.classList.add('movie');
+                movieElement.dataset.movieId = movie.id;
+                movieElement.innerHTML = `
+                    <img src="${movie.poster_path ? imageBaseUrl + movie.poster_path : 'https://via.placeholder.com/500x750?text=No+Image+Available'}" alt="${movie.title}">
+                    <h3>${movie.title}</h3>
+                `;
+                movieElement.addEventListener('click', () => {
+                    // Redirect to movie details page
+                    window.location.href = `movieDetails.html?id=${movie.id}`;
+                });
+                similarMoviesContainer.appendChild(movieElement);
+            });
+        }
+
+        // Helper function to get director
+        function getDirector(crew) {
+            const director = crew.find(member => member.job === 'Director');
+            return director ? director.name : 'N/A';
+        }
+
+        // Helper function to get stars
+        function getStars(cast) {
+            return cast.slice(0, 3).map(actor => actor.name).join(', ') || 'N/A';
+        }
+
+        // Helper function to get genres
+        function getGenres(genres) {
+            return genres.map(genre => genre.name).join(', ');
+        }
+
+        backButton.addEventListener('click', () => {
+            window.location.href = 'index.html'; // or the appropriate page for the home/search view
+        });
+
+        // Initialize page
+        displayMovieDetails();
+    </script>
+</body>
+</html>
